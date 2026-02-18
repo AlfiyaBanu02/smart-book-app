@@ -17,9 +17,10 @@ export default function Dashboard() {
   const [url, setUrl] = useState('')
   const router = useRouter()
 
+  // Fetch bookmarks for the logged-in user
   const fetchBookmarks = async (userId: string) => {
     const { data } = await supabase
-      .from('bookmarks')
+      .from('bookmark') // make sure this matches your Supabase table
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
@@ -28,11 +29,8 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    let channel: any
-
     const setup = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-
       if (!user) {
         router.push('/')
         return
@@ -40,50 +38,44 @@ export default function Dashboard() {
 
       setUser(user)
       fetchBookmarks(user.id)
-
-      channel = supabase
-        .channel('bookmarks-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'bookmarks',
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            fetchBookmarks(user.id)
-          }
-        )
-        .subscribe()
     }
 
     setup()
-
-    return () => {
-      if (channel) supabase.removeChannel(channel)
-    }
   }, [router])
 
+  // Add new bookmark
   const handleAdd = async () => {
     if (!title || !url || !user) return
 
-    await supabase.from('bookmarks').insert([
-      {
-        title,
-        url,
-        user_id: user.id,
-      },
-    ])
+    const { data, error } = await supabase
+      .from('bookmark') // your table name
+      .insert([{ title, url, user_id: user.id }])
+      .select()
 
-    setTitle('')
-    setUrl('')
+    if (error) {
+      console.log('Error adding bookmark:', error.message)
+      return
+    }
+
+    if (data && data.length > 0) {
+      // Update UI immediately
+      setBookmarks(prev => [data[0], ...prev])
+      setTitle('')
+      setUrl('')
+    }
   }
 
+  // Delete bookmark
   const handleDelete = async (id: string) => {
-    await supabase.from('bookmarks').delete().eq('id', id)
+    const { error } = await supabase.from('bookmark').delete().eq('id', id)
+    if (error) {
+      console.log('Error deleting bookmark:', error.message)
+      return
+    }
+    setBookmarks(prev => prev.filter(b => b.id !== id))
   }
 
+  // Logout
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/')
@@ -92,77 +84,67 @@ export default function Dashboard() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-purple-100 via-pink-50 to-yellow-50 flex flex-col items-center p-6">
-      <div className="w-full max-w-3xl bg-white shadow-2xl rounded-2xl p-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">
-            Welcome, <span className="text-purple-600">{user.email}</span>
-          </h2>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+      <div className="w-full max-w-2xl bg-white shadow-lg rounded-xl p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Welcome, {user.email}</h2>
           <button
             onClick={handleLogout}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg shadow hover:bg-red-600 transition"
+            className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
           >
             Logout
           </button>
         </div>
 
-        {/* Add Bookmark */}
-        <div className="mb-8">
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Add Bookmark</h3>
-          <div className="flex flex-col sm:flex-row gap-3">
+        <div className="mb-6">
+          <h3 className="text-lg font-medium mb-3">Add Bookmark</h3>
+          <div className="flex gap-2">
             <input
-              className="border border-gray-300 p-3 rounded-lg flex-1 focus:ring-2 focus:ring-purple-300 outline-none transition"
+              className="border p-2 rounded w-1/3"
               placeholder="Title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
             <input
-              className="border border-gray-300 p-3 rounded-lg flex-1 focus:ring-2 focus:ring-purple-300 outline-none transition"
+              className="border p-2 rounded flex-1"
               placeholder="https://example.com"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
             <button
               onClick={handleAdd}
-              className="bg-purple-600 text-white px-5 py-3 rounded-lg hover:bg-purple-700 transition shadow"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
             >
               Add
             </button>
           </div>
         </div>
 
-        {/* Bookmarks List */}
         <div>
-          <h3 className="text-xl font-semibold mb-4 text-gray-700">Your Bookmarks</h3>
-          {bookmarks.length === 0 ? (
-            <p className="text-gray-500 text-center py-10">No bookmarks yet.</p>
-          ) : (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {bookmarks.map((bookmark) => (
-                <div
-                  key={bookmark.id}
-                  className="flex flex-col justify-between p-4 rounded-xl border border-gray-200 shadow-sm bg-white hover:shadow-lg transition"
+          <h3 className="text-lg font-medium mb-3">Your Bookmarks</h3>
+          {bookmarks.length === 0 && <p className="text-gray-500">No bookmarks yet.</p>}
+          <ul className="space-y-3">
+            {bookmarks.map((bookmark) => (
+              <li
+                key={bookmark.id}
+                className="flex justify-between items-center bg-gray-50 p-3 rounded border"
+              >
+                <a
+                  href={bookmark.url}
+                  target="_blank"
+                  className="text-blue-600 hover:underline flex-1"
                 >
-                  <a
-                    href={bookmark.url}
-                    target="_blank"
-                    className="text-purple-600 font-semibold text-lg hover:underline mb-4"
-                  >
-                    {bookmark.title}
-                  </a>
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleDelete(bookmark.id)}
-                      className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition text-sm"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                  {bookmark.title}
+                </a>
+                <button
+                  onClick={() => handleDelete(bookmark.id)}
+                  className="text-sm bg-red-500 text-white px-3 py-1 rounded ml-3 hover:bg-red-600"
+                >
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>
