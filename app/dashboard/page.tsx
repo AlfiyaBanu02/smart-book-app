@@ -1,5 +1,5 @@
 'use client'
-
+// Trigger redeploy on Vercel
 import { useEffect, useState } from 'react'
 import { supabase } from '../../utils/supabaseClient'
 import { useRouter } from 'next/navigation'
