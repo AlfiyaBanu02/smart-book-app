@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Smart Bookmark App
 
-## Getting Started
+## Overview
 
-First, run the development server:
+Smart Bookmark App is a full-stack web application that allows authenticated users to create, view, and delete personal bookmarks securely.
+
+The application is built using Next.js for the frontend and Supabase for authentication and database management. It is deployed on Vercel.
+
+---
+
+## Tech Stack
+
+- Next.js
+- Supabase (Authentication & PostgreSQL)
+- Row Level Security (RLS)
+- Vercel (Deployment)
+
+---
+
+## Features
+
+- User Authentication (Sign up / Login)
+- Add new bookmarks (Title + URL)
+- Delete bookmarks
+- User-specific data isolation
+- Secure database access using RLS policies
+- Deployed production-ready app
+
+---
+
+## Database Structure
+
+Table: `bookmarks`
+
+Columns:
+- id (UUID)
+- title (text)
+- url (text)
+- user_id (UUID - linked to authenticated user)
+- created_at (timestamp)
+
+---
+
+## Authentication & Privacy
+
+Authentication is handled using Supabase Auth.
+
+Each bookmark record stores a `user_id`.  
+Row Level Security (RLS) policies ensure that:
+
+- Users can only insert their own records.
+- Users can only read their own bookmarks.
+- Users can only delete their own bookmarks.
+
+This ensures complete user data privacy.
+
+---
+
+## Challenges Faced
+
+1. Configuring Row Level Security correctly.
+2. Ensuring user-specific data filtering.
+3. Fixing deployment and environment variable issues on Vercel.
+4. Debugging insert and delete permission errors.
+
+All issues were resolved by properly configuring RLS policies and verifying environment variables.
+
+---
+
+
+## Live Demo
+
+https://smart-book-ldx11oikn-alfiya-banu-js-projects.vercel.app
+
+
+---
+
+## How to Run Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
