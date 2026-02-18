@@ -8,6 +8,8 @@ interface Bookmark {
   id: string
   title: string
   url: string
+  user_id: string
+  created_at: string
 }
 
 export default function Dashboard() {
@@ -17,7 +19,7 @@ export default function Dashboard() {
   const [url, setUrl] = useState('')
   const router = useRouter()
 
-  // 🔹 Fetch bookmarks
+  // ✅ Fetch bookmarks
   const fetchBookmarks = async (userId: string) => {
     const { data, error } = await supabase
       .from('bookmarks')
@@ -30,9 +32,9 @@ export default function Dashboard() {
     }
   }
 
-  // 🔹 Check auth & load data
+  // ✅ Load user + data
   useEffect(() => {
-    const checkUser = async () => {
+    const loadUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -44,35 +46,37 @@ export default function Dashboard() {
       fetchBookmarks(user.id)
     }
 
-    checkUser()
+    loadUser()
   }, [router])
 
-  // 🔹 Add bookmark (instant UI update)
+  // ✅ Add bookmark (refresh list after insert)
   const handleAdd = async () => {
     if (!title || !url || !user) return
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('bookmarks')
       .insert([{ title, url, user_id: user.id }])
-      .select()
 
-    if (!error && data) {
-      setBookmarks(prev => [data[0], ...prev])
+    if (!error) {
+      fetchBookmarks(user.id) // ⬅ refresh from DB
     }
 
     setTitle('')
     setUrl('')
   }
 
-  // 🔹 Delete bookmark (instant UI update)
+  // ✅ Delete bookmark (refresh list after delete)
   const handleDelete = async (id: string) => {
+    if (!user) return
+
     const { error } = await supabase
       .from('bookmarks')
       .delete()
       .eq('id', id)
+      .eq('user_id', user.id)
 
     if (!error) {
-      setBookmarks(prev => prev.filter(b => b.id !== id))
+      fetchBookmarks(user.id) // ⬅ refresh from DB
     }
   }
 
@@ -84,9 +88,8 @@ export default function Dashboard() {
   if (!user) return null
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
       <div className="w-full max-w-2xl bg-white shadow-lg rounded-xl p-6">
-
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">
             Welcome, {user.email}
@@ -131,22 +134,22 @@ export default function Dashboard() {
           )}
 
           <ul className="space-y-3">
-            {bookmarks.map((b) => (
+            {bookmarks.map((bookmark) => (
               <li
-                key={b.id}
-                className="flex justify-between items-center bg-gray-50 p-3 rounded border"
+                key={bookmark.id}
+                className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border"
               >
                 <a
-                  href={b.url}
+                  href={bookmark.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline flex-1"
                 >
-                  {b.title}
+                  {bookmark.title}
                 </a>
                 <button
-                  onClick={() => handleDelete(b.id)}
-                  className="bg-red-500 text-white px-3 py-1 rounded ml-3 hover:bg-red-600"
+                  onClick={() => handleDelete(bookmark.id)}
+                  className="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-full"
                 >
                   Delete
                 </button>
@@ -154,7 +157,6 @@ export default function Dashboard() {
             ))}
           </ul>
         </div>
-
       </div>
     </div>
   )
