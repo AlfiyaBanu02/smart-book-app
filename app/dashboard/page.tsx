@@ -49,23 +49,24 @@ export default function Dashboard() {
     loadUser()
   }, [router])
 
-  // ✅ Add bookmark (refresh list after insert)
+  // ✅ Add bookmark
   const handleAdd = async () => {
     if (!title || !url || !user) return
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('bookmarks')
       .insert([{ title, url, user_id: user.id }])
+      .select() // get the inserted record
 
-    if (!error) {
-      fetchBookmarks(user.id) // ⬅ refresh from DB
+    if (!error && data?.length) {
+      setBookmarks((prev) => [data[0], ...prev]) // add immediately to state
     }
 
     setTitle('')
     setUrl('')
   }
 
-  // ✅ Delete bookmark (refresh list after delete)
+  // ✅ Delete bookmark (optimistic update)
   const handleDelete = async (id: string) => {
     if (!user) return
 
@@ -76,7 +77,8 @@ export default function Dashboard() {
       .eq('user_id', user.id)
 
     if (!error) {
-      fetchBookmarks(user.id) // ⬅ refresh from DB
+      // remove immediately from state
+      setBookmarks((prev) => prev.filter((b) => b.id !== id))
     }
   }
 
@@ -143,13 +145,13 @@ export default function Dashboard() {
                   href={bookmark.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline flex-1"
+                  className="text-blue-600 hover:underline truncate min-w-0 flex-1 mr-4"
                 >
                   {bookmark.title}
                 </a>
                 <button
                   onClick={() => handleDelete(bookmark.id)}
-                  className="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-full"
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-full flex-shrink-0"
                 >
                   Delete
                 </button>
