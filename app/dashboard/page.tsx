@@ -1,4 +1,3 @@
-export const dynamic = "force-dynamic";
 "use client";
 
 import { useEffect, useState } from "react";
@@ -15,7 +14,7 @@ export default function Dashboard() {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
 
-  // ✅ Get Logged User
+  // ✅ Get logged-in user
   useEffect(() => {
     async function getUser() {
       const { data } = await supabase.auth.getUser();
@@ -27,7 +26,7 @@ export default function Dashboard() {
     getUser();
   }, []);
 
-  // ✅ Fetch Bookmarks
+  // ✅ Fetch bookmarks
   async function fetchBookmarks(userId: string) {
     const { data, error } = await supabase
       .from("bookmarks")
@@ -40,32 +39,7 @@ export default function Dashboard() {
     }
   }
 
-  // ✅ Realtime Subscription
-  useEffect(() => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel("bookmarks-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bookmarks",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          fetchBookmarks(user.id);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user]);
-
-  // ✅ Add Bookmark (Optimistic)
+  // ✅ Add bookmark
   async function addBookmark() {
     if (!title || !url || !user) return;
 
@@ -85,13 +59,14 @@ export default function Dashboard() {
       setTitle("");
       setUrl("");
     } else {
-      console.error(error);
+      console.error("Add error:", error);
+      alert("Failed to add bookmark");
     }
   }
 
-  // 🔥 FINAL FIXED DELETE (UI updates FIRST)
+  // ✅ Delete bookmark (Optimistic)
   async function deleteBookmark(id: string) {
-    // 🔥 Remove instantly from UI
+    // Remove immediately from UI
     setBookmarks((prev) =>
       prev.filter((bookmark) => bookmark.id !== id)
     );
@@ -104,7 +79,8 @@ export default function Dashboard() {
     if (error) {
       console.error("Delete error:", error);
       alert("Delete failed");
-      fetchBookmarks(user.id); // restore if failed
+      // Reload from DB if something fails
+      if (user) fetchBookmarks(user.id);
     }
   }
 
@@ -135,19 +111,28 @@ export default function Dashboard() {
       <button onClick={addBookmark}>Add</button>
 
       <h3>Your Bookmarks</h3>
-      {bookmarks.map((bookmark) => (
-        <div key={bookmark.id} style={{ marginTop: "10px" }}>
-          <a href={bookmark.url} target="_blank">
-            {bookmark.title}
-          </a>
-          <button
-            onClick={() => deleteBookmark(bookmark.id)}
-            style={{ marginLeft: "10px" }}
-          >
-            Delete
-          </button>
-        </div>
-      ))}
+
+      {bookmarks.length === 0 ? (
+        <p>No bookmarks yet.</p>
+      ) : (
+        bookmarks.map((bookmark) => (
+          <div key={bookmark.id} style={{ marginTop: "10px" }}>
+            <a
+              href={bookmark.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {bookmark.title}
+            </a>
+            <button
+              onClick={() => deleteBookmark(bookmark.id)}
+              style={{ marginLeft: "10px" }}
+            >
+              Delete
+            </button>
+          </div>
+        ))
+      )}
     </div>
   );
 }
