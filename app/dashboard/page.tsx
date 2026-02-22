@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
 
-  // 🔹 Get Logged User
+  // ✅ Get Logged User
   useEffect(() => {
     async function getUser() {
       const { data } = await supabase.auth.getUser();
@@ -26,7 +26,7 @@ export default function Dashboard() {
     getUser();
   }, []);
 
-  // 🔹 Fetch Bookmarks
+  // ✅ Fetch Bookmarks
   async function fetchBookmarks(userId: string) {
     const { data, error } = await supabase
       .from("bookmarks")
@@ -39,7 +39,7 @@ export default function Dashboard() {
     }
   }
 
-  // 🔥 Realtime Subscription
+  // ✅ Realtime Subscription
   useEffect(() => {
     if (!user) return;
 
@@ -64,7 +64,7 @@ export default function Dashboard() {
     };
   }, [user]);
 
-  // 🔹 Add Bookmark (Optimistic UI)
+  // ✅ Add Bookmark (Optimistic)
   async function addBookmark() {
     if (!title || !url || !user) return;
 
@@ -80,29 +80,34 @@ export default function Dashboard() {
       .select();
 
     if (!error && data) {
-      // Update UI instantly
       setBookmarks((prev) => [data[0], ...prev]);
       setTitle("");
       setUrl("");
+    } else {
+      console.error(error);
     }
   }
 
-  // 🔹 Delete Bookmark (Optimistic UI)
+  // 🔥 FINAL FIXED DELETE (UI updates FIRST)
   async function deleteBookmark(id: string) {
+    // 🔥 Remove instantly from UI
+    setBookmarks((prev) =>
+      prev.filter((bookmark) => bookmark.id !== id)
+    );
+
     const { error } = await supabase
       .from("bookmarks")
       .delete()
       .eq("id", id);
 
-    if (!error) {
-      // Remove from UI instantly
-      setBookmarks((prev) =>
-        prev.filter((bookmark) => bookmark.id !== id)
-      );
+    if (error) {
+      console.error("Delete error:", error);
+      alert("Delete failed");
+      fetchBookmarks(user.id); // restore if failed
     }
   }
 
-  // 🔹 Logout
+  // ✅ Logout
   async function handleLogout() {
     await supabase.auth.signOut();
     window.location.href = "/";
